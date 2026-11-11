@@ -17,6 +17,8 @@ export function SocialConnections() {
   const [peer,setPeer]=useState("");
   const [messages,setMessages]=useState<Message[]>([]);
   const [recipient,setRecipient]=useState("");
+  const [search,setSearch]=useState("");
+  const [results,setResults]=useState<Friend[]>([]);
   const [draft,setDraft]=useState("");
   const [error,setError]=useState("");
   const [busy,setBusy]=useState(false);
@@ -41,6 +43,24 @@ export function SocialConnections() {
   return <section className="mx-auto max-w-3xl space-y-4 text-slate-100">
     <h2 className="text-xl font-bold">Друзі та повідомлення</h2>
     {error&&<p role="alert" className="text-amber-300">{error}</p>}
+    <form className="space-y-2" onSubmit={e=>{e.preventDefault();void (async()=>{
+      try {
+        const r=await api<{items:Friend[]}>("users/search?q="+encodeURIComponent(search.trim()));
+        setResults(r.items);setError("");
+      }catch(e){setError(e instanceof Error?e.message:"Помилка пошуку");}
+    })();}}>
+      <label className="block text-sm">Знайти користувачів, які відкрили профіль</label>
+      <div className="flex gap-2">
+        <input value={search} minLength={2} maxLength={60} onChange={e=>setSearch(e.target.value)}
+          placeholder="Ім’я користувача" className="min-w-0 flex-1 rounded-lg bg-slate-950 p-2"/>
+        <button className="rounded-lg border border-slate-600 px-3">Знайти</button>
+      </div>
+      {results.map(u=><div key={u.id} className="flex items-center gap-2 rounded-lg border border-slate-700 p-2">
+        <span className="flex-1">{u.displayName}</span>
+        <button type="button" disabled={busy} onClick={()=>void action(()=>api("friends/requests","POST",{recipientId:u.id}))}
+          className="text-emerald-300">Додати</button>
+      </div>)}
+    </form>
     <form className="flex flex-wrap gap-2" onSubmit={e=>{e.preventDefault();void action(async()=>{
       await api("friends/requests","POST",{recipientId:recipient.trim()});setRecipient("");
     });}}>
