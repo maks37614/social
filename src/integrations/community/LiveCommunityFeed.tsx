@@ -46,6 +46,8 @@ function PostComments({postId}:{postId:string}) {
 }
 export function LiveCommunityFeed() {
   const [items, setItems] = useState<CommunityItem[]>([]);
+  const [next,setNext] = useState<string|null>(null);
+  const [loadingMore,setLoadingMore] = useState(false);
   const [mode, setMode] = useState<"public"|"friends">("public");
   const [audience, setAudience] = useState<"public"|"friends"|"private">("public");
   const [text, setText] = useState("");
@@ -57,6 +59,7 @@ export function LiveCommunityFeed() {
     try {
       const result = await getCommunityFeed(mode);
       setItems(result.items);
+      setNext(result.next);
       setError("");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Community unavailable");
@@ -65,6 +68,16 @@ export function LiveCommunityFeed() {
     }
   };
   useEffect(() => { void refresh(); }, [mode]);
+  const loadMore = async () => {
+    if(!next || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const page = await getCommunityFeed(mode,next);
+      setItems(current => [...current,...page.items.filter(item=>!current.some(existing=>existing.id===item.id))]);
+      setNext(page.next);setError("");
+    } catch(e){setError(e instanceof Error?e.message:"Не вдалося завантажити дописи");}
+    finally{setLoadingMore(false);}
+  };
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!text.trim() || busy) return;
@@ -108,5 +121,8 @@ export function LiveCommunityFeed() {
         }}>👍 Підтримати</button>
         <PostComments postId={item.id}/>
       </article>)}
+    {!loading && next && <button disabled={loadingMore} onClick={()=>void loadMore()}
+      className="rounded-lg border border-slate-600 px-4 py-2 disabled:opacity-50">
+      {loadingMore?"Завантаження…":"Показати більше дописів"}</button>}
   </section>;
 }
