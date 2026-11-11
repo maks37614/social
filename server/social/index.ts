@@ -165,6 +165,11 @@ app.get("/api/community/feed", wrap(async (req, res) => {
   const user = await authenticated(req, res);
   if (!user) return;
   const mode = req.query.mode === "friends" ? "friends" : "public";
+  const before = req.query.before;
+  if (before !== undefined && (typeof before !== "string" ||
+      !/^\\d{4}-\\d{2}-\\d{2}T[^|]+\\|[0-9a-f-]{36}$/i.test(before)))
+    return bad(res,"Invalid pagination cursor");
+  const cursor = typeof before === "string" ? before.split("|") : null;
   const { rows } = await pool.query(
     `SELECT p.id,p.body,p.created_at,p.author_id,p.audience,u.display_name
      FROM social_posts p JOIN social_users u ON u.id=p.author_id
@@ -175,13 +180,16 @@ app.get("/api/community/feed", wrap(async (req, res) => {
          AND ((f.sender_id=$1 AND f.recipient_id=p.author_id)
          OR (f.recipient_id=$1 AND f.sender_id=p.author_id))
        )))
-     ORDER BY p.created_at DESC,p.id DESC LIMIT 40`,
-    [user.id,mode]
+       AND ($3::timestamptz IS NULL OR (p.created_at,p.id) < ($3::timestamptz,$4::uuid))
+     ORDER BY p.created_at DESC,p.id DESC LIMIT 41`,
+    [user.id,mode,cursor?.[0] ?? null,cursor?.[1] ?? null]
   );
-  res.json({ success:true, items:rows.map(r => ({
+  const page=rows.slice(0,40);
+  const last=page.at(-1);
+  res.json({ success:true, items:page.map(r => ({
     id:r.id,kind:"post",body:{text:r.body},ownerId:r.author_id,
     authorName:r.display_name,createdAt:r.created_at,audience:r.audience
-  })),next:null });
+  })),next:rows.length>40 && last ? new Date(last.created_at).toISOString()+"|"+last.id : null });
 }));
 app.post("/api/community/items", limit, wrap(async (req, res) => {
   const user = await authenticated(req, res);
