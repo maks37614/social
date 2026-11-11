@@ -40,7 +40,8 @@ async function main(){
     if(i===99)throw new Error("Server startup timeout: "+output);
   }
   const a=await createUser("CI Alice"),b=await createUser("CI Bob"),c=await createUser("CI Carol");
-  const denied=await api("/api/community/items","POST",{body:{text:"forbidden"}});
+  const rawDenied=await fetch(base+"/api/community/items",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({body:{text:"forbidden"}})});
+  const denied={status:rawDenied.status};
   assert.equal(denied.status,403,"Missing origin must fail");
   const privatePost=await api("/api/community/items","POST",{body:{text:"private data"},audience:"private"},a.cookie);
   assert.equal(privatePost.status,201);
