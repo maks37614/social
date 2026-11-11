@@ -78,9 +78,14 @@ export function SocialConnections() {
     </div>}
     <div className="space-y-2"><h3 className="font-semibold">Мої друзі</h3>
       {friends.length===0?<p className="text-slate-400">Поки немає друзів.</p>:
-      friends.map(f=><button key={f.id} onClick={()=>void load(f.id)}
-        className={"block w-full rounded-lg border p-3 text-left "+(peer===f.id?"border-emerald-500":"border-slate-700")}>
-        {f.displayName}</button>)}
+      friends.map(f=><div key={f.id} className={"flex items-center gap-2 rounded-lg border p-2 "+(peer===f.id?"border-emerald-500":"border-slate-700")}>
+        <button onClick={()=>void load(f.id)} className="min-w-0 flex-1 p-1 text-left">{f.displayName}</button>
+        <button disabled={busy} className="rounded-lg border border-rose-700 px-2 py-1 text-sm text-rose-300"
+          onClick={()=>{if(window.confirm("Видалити з друзів? Доступ до повідомлень буде закрито."))void action(async()=>{
+            await api("friends/"+encodeURIComponent(f.id),"DELETE");
+            if(peer===f.id){setPeer("");setMessages([]);}
+          });}}>Видалити</button>
+      </div>)}
     </div>
     {peer&&<div className="space-y-3 rounded-xl border border-slate-700 p-4">
       <h3 className="font-semibold">Приватна розмова</h3>
