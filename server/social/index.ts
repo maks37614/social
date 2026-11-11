@@ -207,6 +207,40 @@ app.post("/api/community/items/:id/reaction", limit, wrap(async (req, res) => {
   if (!result.rowCount) return bad(res, "Post not found", 404);
   res.json({ success:true });
 }));
+app.get("/api/community/items/:id/comments", wrap(async (req,res) => {
+  const user = await authenticated(req,res); if (!user) return;
+  if (!/^[0-9a-f-]{36}$/i.test(req.params.id)) return bad(res,"Invalid post id");
+  const { rows } = await pool.query(
+    `SELECT c.id,c.body,c.created_at AS "createdAt",c.author_id AS "authorId",
+      u.display_name AS "authorName"
+      FROM social_comments c JOIN social_users u ON u.id=c.author_id
+      JOIN social_posts p ON p.id=c.post_id
+      WHERE c.post_id=$1 AND (p.author_id=$2 OR p.audience='public'
+        OR (p.audience='friends' AND EXISTS (
+          SELECT 1 FROM social_friend_requests f WHERE f.status='accepted'
+          AND ((f.sender_id=$2 AND f.recipient_id=p.author_id)
+            OR (f.recipient_id=$2 AND f.sender_id=p.author_id)))))
+      ORDER BY c.created_at ASC,c.id ASC LIMIT 100`,
+    [req.params.id,user.id]);
+  res.json({success:true,items:rows});
+}));
+app.post("/api/community/items/:id/comments", limit, wrap(async (req,res) => {
+  const user = await authenticated(req,res); if (!user) return;
+  if (!/^[0-9a-f-]{36}$/i.test(req.params.id)) return bad(res,"Invalid post id");
+  const body = typeof req.body?.body === "string" ? req.body.body.trim() : "";
+  if (!body || body.length > 2000) return bad(res,"Comment must contain 1–2000 characters");
+  const {rows} = await pool.query(
+    `INSERT INTO social_comments(post_id,author_id,body)
+     SELECT p.id,$2,$3 FROM social_posts p
+     WHERE p.id=$1 AND (p.author_id=$2 OR p.audience='public'
+       OR (p.audience='friends' AND EXISTS (
+         SELECT 1 FROM social_friend_requests f WHERE f.status='accepted'
+         AND ((f.sender_id=$2 AND f.recipient_id=p.author_id)
+         OR (f.recipient_id=$2 AND f.sender_id=p.author_id)))))
+     RETURNING id`,[req.params.id,user.id,body]);
+  if (!rows[0]) return bad(res,"Post not found",404);
+  res.status(201).json({success:true,id:rows[0].id});
+}));
 registerSocialRelations(app, pool, authenticated);
 app.get("/api/social/health", (_req, res) => res.json({ status:"ok" }));
 async function start() {
