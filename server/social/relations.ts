@@ -95,6 +95,25 @@ export function registerSocialRelations(app: Express, pool: Pool, auth: Auth) {
     if (!result.rowCount) return void error(res,404,"Pending request not found");
     res.json({ success:true });
   }));
+  app.delete("/api/social/friends/requests/:recipientId", handler(async (req,res) => {
+    const user = await auth(req,res); if (!user) return;
+    const recipient = req.params.recipientId;
+    if (!uuid(recipient) || recipient === user.id) return void error(res,400,"Invalid recipient");
+    const result = await pool.query(
+      "DELETE FROM social_friend_requests WHERE sender_id=$1 AND recipient_id=$2 AND status='pending' RETURNING sender_id",
+      [user.id,recipient]);
+    if (!result.rowCount) return void error(res,404,"Pending outgoing request not found");
+    res.json({success:true});
+  }));
+  app.get("/api/social/friends/requests/outgoing", handler(async (req,res) => {
+    const user = await auth(req,res); if (!user) return;
+    const { rows } = await pool.query(
+      `SELECT r.recipient_id AS "recipientId",u.display_name AS "recipientName",
+       r.created_at AS "createdAt"
+       FROM social_friend_requests r JOIN social_users u ON u.id=r.recipient_id
+       WHERE r.sender_id=$1 AND r.status='pending' ORDER BY r.created_at DESC LIMIT 100`,[user.id]);
+    res.json({items:rows});
+  }));
   app.get("/api/social/friends", handler(async (req,res) => {
     const user = await auth(req,res); if (!user) return;
     const { rows } = await pool.query(
