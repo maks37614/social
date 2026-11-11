@@ -3,6 +3,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import argon2 from "argon2";
+import nodemailer from "nodemailer";
 import { createSocialPool } from "./database";
 
 const pool = createSocialPool();
@@ -19,6 +20,10 @@ if (!origin || !/^https?:\/\/[^/]+$/.test(origin)) throw new Error("SOCIAL_APP_O
 const production = process.env.NODE_ENV === "production";
 if (production && !origin.startsWith("https://")) throw new Error("HTTPS origin required in production");
 const cookieName = "social_session";
+const smtpUrl = process.env.SOCIAL_SMTP_URL;
+const mailFrom = process.env.SOCIAL_MAIL_FROM;
+if (!smtpUrl || !mailFrom) throw new Error("Social SMTP configuration required for verified registration");
+const mailer = nodemailer.createTransport(smtpUrl);
 const hash = (token: string) => createHash("sha256").update(token).digest("hex");
 const cookies = (req: Request) => Object.fromEntries((req.headers.cookie ?? "").split(";").map(v => {
   const i = v.indexOf("=");
@@ -72,12 +77,32 @@ app.post("/api/social/register", limit, wrap(async (req, res) => {
     return bad(res, "Invalid registration data");
   const encoded = await argon2.hash(password, { type: argon2.argon2id });
   try {
-    await pool.query("INSERT INTO social_users(email,password_hash,display_name) VALUES($1,$2,$3)", [email.toLowerCase(), encoded, displayName.trim()]);
+    const { rows } = await pool.query<{id:string}>("INSERT INTO social_users(email,password_hash,display_name) VALUES($1,$2,$3) RETURNING id", [email.toLowerCase(), encoded, displayName.trim()]);
+    const token = randomBytes(32).toString("hex");
+    await pool.query("INSERT INTO social_verification_tokens(token_hash,user_id,expires_at) VALUES($1,$2,now()+interval '24 hours')", [hash(token), rows[0].id]);
+    await mailer.sendMail({ from: mailFrom, to: email.toLowerCase(), subject: "Підтвердіть Social email",
+      text: `Відкрийте посилання для підтвердження email: ${origin}/api/social/verify?token=${token}` });
     res.status(201).json({ success: true, emailVerificationRequired: true });
   } catch (e: any) {
     if (e.code === "23505") return bad(res, "Account already exists", 409);
     throw e;
   }
+}));
+app.get("/api/social/verify", wrap(async (req, res) => {
+  const token = req.query.token;
+  if (typeof token !== "string" || !/^[a-f0-9]{64}$/.test(token)) return bad(res, "Invalid token");
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const { rows } = await client.query<{user_id:string}>(
+      "DELETE FROM social_verification_tokens WHERE token_hash=$1 AND expires_at>now() RETURNING user_id",
+      [hash(token)]);
+    if (!rows[0]) { await client.query("ROLLBACK"); return bad(res, "Expired or invalid token", 400); }
+    await client.query("UPDATE social_users SET email_verified=true WHERE id=$1", [rows[0].user_id]);
+    await client.query("COMMIT");
+    res.type("text/plain").send("Email підтверджено. Можете увійти до Social.");
+  } catch (e) { await client.query("ROLLBACK"); throw e; }
+  finally { client.release(); }
 }));
 app.post("/api/social/login", limit, wrap(async (req, res) => {
   const { email, password } = req.body ?? {};
