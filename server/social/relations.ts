@@ -30,6 +30,7 @@ export function registerSocialRelations(app: Express, pool: Pool, auth: Auth) {
       (profile.bio_audience === "friends" && friend)));
     res.json({ userId:profile.id, displayName:profile.display_name,
       bio:visible ? profile.bio ?? "" : null,
+      bioAudience:self ? (profile.bio_audience ?? "private") : undefined,
       publicEnabled:profile.public_enabled === true, isFriend:friend, isSelf:self });
   }));
   app.put("/api/social/profile", handler(async (req,res) => {
