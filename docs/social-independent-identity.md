@@ -31,3 +31,11 @@ Dedicated DB factory and example configuration are committed. **Backend bootstra
 - Start only with a fresh, dedicated DB and explicitly set `SOCIAL_RUN_MIGRATIONS=1` for the first migration run. The service listens on localhost only.
 - **Not production-ready**: password reset, MFA, friends, comments, messages, notifications, profile settings, privacy/audience enforcement beyond public/private, moderation, durable rate limiting, database migration versioning, and full UI data mapping remain unfinished. Imported h00k modules are reference code, not wired into the Social server.
 - No CI/build/staging smoke test has been run, and the package lockfile must be regenerated in a controlled development environment.
+
+## Follow-up integration progress
+
+- Added `social_profiles`, `social_friend_requests`, `social_messages`, and `social_password_reset_tokens` to the **Social-only** schema.
+- Added profile audience filtering, incoming friend requests, accept/decline, friend listing, and direct messages gated on accepted friendship.
+- Added reset-request and reset-confirm endpoints; reset confirmation invalidates all existing sessions.
+- The Messages page now uses a real Social API-backed friends and private messaging component, not the original demo chat.
+- **Remaining before deployment:** complete UI for profile settings and password reset, account abuse controls, email delivery retry handling, migration/versioning, full authorization tests, real-time message delivery, build/lockfile verification, and infrastructure deployment review. Do not merge/deploy this draft.
