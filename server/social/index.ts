@@ -170,6 +170,8 @@ app.get("/api/community/feed", wrap(async (req, res) => {
       !/^\\d{4}-\\d{2}-\\d{2}T[^|]+\\|[0-9a-f-]{36}$/i.test(before)))
     return bad(res,"Invalid pagination cursor");
   const cursor = typeof before === "string" ? before.split("|") : null;
+  if (cursor && (!Number.isFinite(Date.parse(cursor[0])) || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(cursor[1])))
+    return bad(res,"Invalid pagination cursor");
   const { rows } = await pool.query(
     `SELECT p.id,p.body,p.created_at,p.author_id,p.audience,u.display_name
      FROM social_posts p JOIN social_users u ON u.id=p.author_id
@@ -249,6 +251,11 @@ app.post("/api/community/items/:id/comments", limit, wrap(async (req,res) => {
   if (!rows[0]) return bad(res,"Post not found",404);
   res.status(201).json({success:true,id:rows[0].id});
 }));
+// Shared mutation guard for profile, friendship and private-message endpoints.
+app.use("/api/social", (req,res,next) => {
+  if (["GET","HEAD","OPTIONS"].includes(req.method)) return next();
+  return limit(req,res,next);
+});
 registerSocialRelations(app, pool, authenticated);
 app.get("/api/social/health", (_req, res) => res.json({ status:"ok" }));
 async function start() {
