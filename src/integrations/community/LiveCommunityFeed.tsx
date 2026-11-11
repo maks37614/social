@@ -3,6 +3,8 @@ import { createCommunityPost, getCommunityFeed, reactToCommunityItem, type Commu
 
 export function LiveCommunityFeed() {
   const [items, setItems] = useState<CommunityItem[]>([]);
+  const [mode, setMode] = useState<"public"|"friends">("public");
+  const [audience, setAudience] = useState<"public"|"friends"|"private">("public");
   const [text, setText] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -10,7 +12,7 @@ export function LiveCommunityFeed() {
   const refresh = async () => {
     setLoading(true);
     try {
-      const result = await getCommunityFeed();
+      const result = await getCommunityFeed(mode);
       setItems(result.items);
       setError("");
     } catch (e) {
@@ -19,13 +21,13 @@ export function LiveCommunityFeed() {
       setLoading(false);
     }
   };
-  useEffect(() => { void refresh(); }, []);
+  useEffect(() => { void refresh(); }, [mode]);
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!text.trim() || busy) return;
     setBusy(true);
     try {
-      await createCommunityPost({ body: { text: text.trim() }, audience: "public" });
+      await createCommunityPost({ body: { text: text.trim() }, audience });
       setText("");
       await refresh();
     } catch (e) {
@@ -35,10 +37,20 @@ export function LiveCommunityFeed() {
   return <section className="mx-auto max-w-3xl space-y-4 text-slate-100">
     <header><h2 className="text-xl font-bold">Community · живі дані</h2>
       <p className="text-sm text-slate-400">Окрема база Social. Демонстраційні пости тут не показуються.</p></header>
+    <div className="flex gap-2" role="group" aria-label="Режим стрічки">
+      <button aria-pressed={mode==="public"} onClick={()=>setMode("public")} className="rounded-lg border border-slate-700 px-3 py-2">Публічна</button>
+      <button aria-pressed={mode==="friends"} onClick={()=>setMode("friends")} className="rounded-lg border border-slate-700 px-3 py-2">Друзі</button>
+    </div>
     <form onSubmit={submit} className="rounded-2xl border border-slate-700 bg-slate-900 p-4 space-y-3">
-      <label htmlFor="social-post">Новий публічний допис</label>
+      <label htmlFor="social-post">Новий допис</label>
       <textarea id="social-post" maxLength={5000} value={text} onChange={e => setText(e.target.value)}
         className="w-full rounded-lg bg-slate-950 border border-slate-700 p-3" rows={3}/>
+      <label className="block">Кому видно допис
+        <select value={audience} onChange={e=>setAudience(e.target.value as typeof audience)}
+          className="ml-2 rounded-lg bg-slate-950 border border-slate-700 p-2">
+          <option value="public">Усім</option><option value="friends">Друзям</option><option value="private">Тільки мені</option>
+        </select>
+      </label>
       <button disabled={busy || !text.trim()} className="rounded-lg bg-emerald-500 px-4 py-2 text-slate-950 disabled:opacity-50">
         {busy ? "Публікація…" : "Опублікувати"}</button>
     </form>
