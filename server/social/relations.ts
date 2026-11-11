@@ -17,6 +17,20 @@ export function registerSocialRelations(app: Express, pool: Pool, auth: Auth) {
       [a,b]);
     return Boolean(rowCount);
   }
+  app.get("/api/social/users/search", handler(async (req,res) => {
+    const user = await auth(req,res); if (!user) return;
+    const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
+    if (q.length < 2 || q.length > 60) return void error(res,400,"Search requires 2–60 characters");
+    const escaped = q.replace(/[\\%_]/g, "\\  app.get("/api/social/profiles/:id",");
+    const { rows } = await pool.query(
+      `SELECT u.id,u.display_name AS "displayName"
+       FROM social_users u JOIN social_profiles p ON p.user_id=u.id
+       WHERE u.id<>$1 AND p.public_enabled=true
+       AND u.display_name ILIKE $2 ESCAPE '\\'
+       ORDER BY u.display_name,u.id LIMIT 20`,
+      [user.id,"%"+escaped+"%"]);
+    res.json({items:rows});
+  }));
   app.get("/api/social/profiles/:id", handler(async (req,res) => {
     const viewer = await auth(req,res); if (!viewer) return;
     if (!uuid(req.params.id)) return void error(res,400,"Invalid user id");
