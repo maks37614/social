@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { LiveCommunityFeed } from './integrations/community/LiveCommunityFeed';
+import { SocialIdentityGate } from './integrations/community/SocialIdentityGate';
 import { Header, MainNavSection } from './components/Header';
 import { LeftTraderSidebar, TradingSession } from './components/LeftTraderSidebar';
 import { CentralCommunityFeed } from './components/CentralCommunityFeed';
@@ -359,7 +360,7 @@ export default function App() {
         {/* PAGE 1: COMMUNITY HUB (Exact layout matching concept screenshot)          */}
         {/* ========================================================================= */}
         {activeSection === 'community' && (
-          <LiveCommunityFeed />
+          <SocialIdentityGate><LiveCommunityFeed /></SocialIdentityGate>
         )}
         {false && activeSection === 'community' && (
           <div className="space-y-3">
