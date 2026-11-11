@@ -21,7 +21,7 @@ export function registerSocialRelations(app: Express, pool: Pool, auth: Auth) {
     const user = await auth(req,res); if (!user) return;
     const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
     if (q.length < 2 || q.length > 60) return void error(res,400,"Search requires 2–60 characters");
-    const escaped = q.replace(/[\\%_]/g, "\\  app.get("/api/social/profiles/:id",");
+    const escaped = q.replace(/[\\%_]/g, (ch) => "\\" + ch);
     const { rows } = await pool.query(
       `SELECT u.id,u.display_name AS "displayName"
        FROM social_users u JOIN social_profiles p ON p.user_id=u.id
