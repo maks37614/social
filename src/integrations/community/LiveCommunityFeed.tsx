@@ -1,6 +1,49 @@
 import { useEffect, useState } from "react";
 import { createCommunityPost, getCommunityFeed, reactToCommunityItem, type CommunityItem } from "./api";
 
+type Comment = {id:string;body:string;authorName:string;createdAt:string};
+function PostComments({postId}:{postId:string}) {
+  const [open,setOpen]=useState(false);
+  const [comments,setComments]=useState<Comment[]>([]);
+  const [draft,setDraft]=useState("");
+  const [error,setError]=useState("");
+  const [busy,setBusy]=useState(false);
+  const load=async()=>{
+    try {
+      const r=await fetch("/api/community/items/"+encodeURIComponent(postId)+"/comments",{credentials:"same-origin",cache:"no-store"});
+      const data=await r.json();if(!r.ok)throw new Error(data.error??"Cannot load comments");
+      setComments(data.items);setError("");
+    }catch(e){setError(e instanceof Error?e.message:"Помилка коментарів");}
+  };
+  const submit=async(e:React.FormEvent)=>{
+    e.preventDefault();if(!draft.trim()||busy)return;setBusy(true);
+    try {
+      const r=await fetch("/api/community/items/"+encodeURIComponent(postId)+"/comments",{
+        method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({body:draft.trim()})});
+      const data=await r.json();if(!r.ok)throw new Error(data.error??"Cannot publish comment");
+      setDraft("");await load();
+    }catch(e){setError(e instanceof Error?e.message:"Помилка публікації");}
+    finally{setBusy(false);}
+  };
+  return <div className="space-y-2">
+    <button className="text-sm text-emerald-300" aria-expanded={open} onClick={()=>{
+      if(!open)void load();setOpen(!open);
+    }}>{open?"Сховати коментарі":"Коментарі"}</button>
+    {open&&<div className="space-y-2">
+      {comments.map(c=><div key={c.id} className="rounded-lg bg-slate-950 p-2">
+        <p className="text-xs text-slate-400">{c.authorName} · {new Date(c.createdAt).toLocaleString("uk-UA")}</p>
+        <p className="whitespace-pre-wrap break-words">{c.body}</p>
+      </div>)}
+      <form onSubmit={submit} className="flex gap-2">
+        <input aria-label="Новий коментар" maxLength={2000} value={draft}
+          onChange={e=>setDraft(e.target.value)} className="min-w-0 flex-1 rounded-lg bg-slate-950 p-2"/>
+        <button disabled={busy||!draft.trim()} className="text-emerald-300">Написати</button>
+      </form>
+      {error&&<p role="alert" className="text-amber-300">{error}</p>}
+    </div>}
+  </div>;
+}
 export function LiveCommunityFeed() {
   const [items, setItems] = useState<CommunityItem[]>([]);
   const [mode, setMode] = useState<"public"|"friends">("public");
@@ -63,6 +106,7 @@ export function LiveCommunityFeed() {
           try { await reactToCommunityItem(item.id, "👍"); setError(""); }
           catch (e) { setError(e instanceof Error ? e.message : "Reaction failed"); }
         }}>👍 Підтримати</button>
+        <PostComments postId={item.id}/>
       </article>)}
   </section>;
 }
