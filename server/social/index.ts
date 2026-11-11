@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import argon2 from "argon2";
 import nodemailer from "nodemailer";
 import { createSocialPool } from "./database";
+import { registerSocialRelations } from "./relations";
 
 const pool = createSocialPool();
 const app = express();
@@ -159,6 +160,7 @@ app.post("/api/community/items/:id/reaction", limit, wrap(async (req, res) => {
   if (!result.rowCount) return bad(res, "Post not found", 404);
   res.json({ success:true });
 }));
+registerSocialRelations(app, pool, authenticated);
 app.get("/api/social/health", (_req, res) => res.json({ status:"ok" }));
 async function start() {
   // Explicit opt-in: never migrate an unknown database automatically.
