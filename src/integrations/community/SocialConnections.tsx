@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 type Friend = { id:string; displayName:string };
 type Request = { senderId:string; senderName:string };
+type OutgoingRequest = {recipientId:string;recipientName:string};
 type Message = { id:string; senderId:string; body:string; createdAt:string };
 async function api<T>(path:string, method="GET", body?:object):Promise<T> {
   const response = await fetch("/api/social/"+path,{method,credentials:"same-origin",
@@ -14,6 +15,7 @@ async function api<T>(path:string, method="GET", body?:object):Promise<T> {
 export function SocialConnections() {
   const [friends,setFriends]=useState<Friend[]>([]);
   const [requests,setRequests]=useState<Request[]>([]);
+  const [outgoing,setOutgoing]=useState<OutgoingRequest[]>([]);
   const [peer,setPeer]=useState("");
   const [messages,setMessages]=useState<Message[]>([]);
   const [recipient,setRecipient]=useState("");
@@ -24,8 +26,8 @@ export function SocialConnections() {
   const [busy,setBusy]=useState(false);
   const refresh=async()=>{
     try {
-      const [f,r]=await Promise.all([api<{items:Friend[]}>("friends"),api<{items:Request[]}>("friends/requests")]);
-      setFriends(f.items);setRequests(r.items);setError("");
+      const [f,r,o]=await Promise.all([api<{items:Friend[]}>("friends"),api<{items:Request[]}>("friends/requests"),api<{items:OutgoingRequest[]}>("friends/requests/outgoing")]);
+      setFriends(f.items);setRequests(r.items);setOutgoing(o.items);setError("");
     }catch(e){setError(e instanceof Error?e.message:"Network error");}
   };
   const load=async(id:string)=>{
@@ -74,6 +76,14 @@ export function SocialConnections() {
         <span className="flex-1">{r.senderName}</span>
         <button disabled={busy} onClick={()=>void action(()=>api(`friends/requests/${r.senderId}/respond`,"POST",{status:"accepted"}))}>Прийняти</button>
         <button disabled={busy} onClick={()=>void action(()=>api(`friends/requests/${r.senderId}/respond`,"POST",{status:"declined"}))}>Відхилити</button>
+      </div>)}
+    </div>}
+    {outgoing.length>0&&<div className="space-y-2">
+      <h3 className="font-semibold">Надіслані заявки</h3>
+      {outgoing.map(r=><div key={r.recipientId} className="flex items-center gap-2 rounded-lg border border-slate-700 p-3">
+        <span className="flex-1">{r.recipientName}</span>
+        <button disabled={busy} className="text-rose-300"
+          onClick={()=>void action(()=>api("friends/requests/"+encodeURIComponent(r.recipientId),"DELETE"))}>Скасувати</button>
       </div>)}
     </div>}
     <div className="space-y-2"><h3 className="font-semibold">Мої друзі</h3>
