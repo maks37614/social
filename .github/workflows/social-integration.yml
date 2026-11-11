@@ -49,3 +49,5 @@ jobs:
         run: |
           psql -v ON_ERROR_STOP=1 -Atc "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('social_users','social_sessions','social_posts','social_reactions','social_comments','social_verification_tokens','social_profiles','social_friend_requests','social_messages','social_password_reset_tokens')" | grep -qx '10'
           psql -v ON_ERROR_STOP=1 -Atc "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name LIKE 'hc_%'" | grep -qx '0'
+      - name: Social API integration smoke tests
+        run: node server/social/smoke-test.mjs
