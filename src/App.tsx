@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { LiveCommunityFeed } from './integrations/community/LiveCommunityFeed';
 import { Header, MainNavSection } from './components/Header';
 import { LeftTraderSidebar, TradingSession } from './components/LeftTraderSidebar';
 import { CentralCommunityFeed } from './components/CentralCommunityFeed';
@@ -358,6 +359,9 @@ export default function App() {
         {/* PAGE 1: COMMUNITY HUB (Exact layout matching concept screenshot)          */}
         {/* ========================================================================= */}
         {activeSection === 'community' && (
+          <LiveCommunityFeed />
+        )}
+        {false && activeSection === 'community' && (
           <div className="space-y-3">
             {/* Mobile Spatial Segmented Controller (< 768px) */}
             <div className="md:hidden bg-[#0c1322] border border-[#1b273d] p-1.5 rounded-2xl shadow-lg">
