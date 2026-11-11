@@ -104,6 +104,17 @@ export function registerSocialRelations(app: Express, pool: Pool, auth: Auth) {
        ORDER BY u.display_name LIMIT 200`,[user.id]);
     res.json({ items:rows });
   }));
+  app.delete("/api/social/friends/:peerId", handler(async (req,res) => {
+    const user = await auth(req,res); if (!user) return;
+    const peer = req.params.peerId;
+    if (!uuid(peer) || peer === user.id) return void error(res,400,"Invalid friend");
+    const result = await pool.query(
+      `DELETE FROM social_friend_requests
+       WHERE status='accepted' AND ((sender_id=$1 AND recipient_id=$2)
+       OR (sender_id=$2 AND recipient_id=$1)) RETURNING sender_id`,[user.id,peer]);
+    if (!result.rowCount) return void error(res,404,"Friendship not found");
+    res.json({success:true});
+  }));
   app.post("/api/social/messages", handler(async (req,res) => {
     const user = await auth(req,res); if (!user) return;
     const recipient = req.body?.recipientId, body = req.body?.body;
