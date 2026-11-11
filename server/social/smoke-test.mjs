@@ -80,7 +80,12 @@ async function main(){
   assert.ok(directory.data.items.some(u=>u.id===a.id),"Opted-in user must be discoverable");
   assert.equal((await api(`/api/social/profiles/${a.id}`,"GET",undefined,b.cookie)).data.bio,"secret");
   assert.equal((await api(`/api/social/profiles/${a.id}`,"GET",undefined,c.cookie)).data.bio,null);
-  console.log("PASS: login, CSRF origin, audiences, friendship, comments, messages, profiles");
+  assert.equal((await api("/api/social/friends/"+b.id,"DELETE",undefined,a.cookie)).status,200);
+  assert.equal((await api("/api/social/messages","POST",{recipientId:a.id,body:"after removal"},b.cookie)).status,403);
+  assert.equal((await api("/api/social/messages/"+b.id,"GET",undefined,a.cookie)).status,403);
+  assert.ok(!(await api("/api/community/feed?mode=friends","GET",undefined,b.cookie)).data.items.some(p=>p.id===friendsPost.data.id));
+  assert.equal((await api("/api/community/items/"+friendsPost.data.id+"/comments","POST",{body:"after removal"},b.cookie)).status,404);
+  console.log("PASS: login, CSRF origin, audiences, friendship, revocation, comments, messages, profiles");
 }
 try {await main();} catch(e){console.error(e);process.exitCode=1;}
 finally{
