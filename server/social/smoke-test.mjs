@@ -60,6 +60,11 @@ async function main(){
   assert.ok(!bobFeed.data.items.some(p=>p.id===privatePost.data.id));
   assert.equal((await api(`/api/community/items/${friendsPost.data.id}/comments`,"POST",{body:"blocked"},b.cookie)).status,404);
   assert.equal((await api("/api/social/messages","POST",{recipientId:a.id,body:"blocked"},b.cookie)).status,403);
+  assert.equal((await api("/api/social/friends/requests","POST",{recipientId:c.id},a.cookie)).status,201);
+  assert.ok((await api("/api/social/friends/requests/outgoing","GET",undefined,a.cookie)).data.items.some(r=>r.recipientId===c.id));
+  assert.equal((await api("/api/social/friends/requests/"+c.id,"DELETE",undefined,a.cookie)).status,200);
+  assert.equal((await api("/api/social/friends/requests/"+c.id,"DELETE",undefined,a.cookie)).status,404);
+  assert.ok(!(await api("/api/social/friends/requests","GET",undefined,c.cookie)).data.items.some(r=>r.senderId===a.id));
   assert.equal((await api("/api/social/friends/requests","POST",{recipientId:b.id},a.cookie)).status,201);
   assert.equal((await api(`/api/social/friends/requests/${a.id}/respond`,"POST",{status:"accepted"},b.cookie)).status,200);
   const bobFriends=await api("/api/community/feed?mode=friends","GET",undefined,b.cookie);
