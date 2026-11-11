@@ -1,0 +1,6 @@
+{
+  "name": "h00k Social - Crypto Screener & Trader Community",
+  "description": "Соціальна мережа для трейдерів на базі крипто-скрінера h00k: профілі, стіна, аналітика угод, чат, друзі та скрінер плотностей.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
