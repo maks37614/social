@@ -37,3 +37,9 @@ CREATE TABLE IF NOT EXISTS social_comments (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS social_comments_post ON social_comments(post_id,created_at,id);
+
+CREATE TABLE IF NOT EXISTS social_verification_tokens (
+  token_hash text PRIMARY KEY,
+  user_id uuid NOT NULL REFERENCES social_users(id) ON DELETE CASCADE,
+  expires_at timestamptz NOT NULL
+);
