@@ -49,6 +49,8 @@ async function main(){
   assert.equal(friendsPost.status,201);
   const publicPost=await api("/api/community/items","POST",{body:{text:"public data"},audience:"public"},a.cookie);
   assert.equal(publicPost.status,201);
+  const invalidCursor=await api("/api/community/feed?before=not-a-cursor","GET",undefined,a.cookie);
+  assert.equal(invalidCursor.status,400);
   const bobFeed=await api("/api/community/feed?mode=friends","GET",undefined,b.cookie);
   assert.equal(bobFeed.status,200);
   assert.ok(!bobFeed.data.items.some(p=>p.id===friendsPost.data.id));
@@ -60,6 +62,9 @@ async function main(){
   const bobFriends=await api("/api/community/feed?mode=friends","GET",undefined,b.cookie);
   assert.ok(bobFriends.data.items.some(p=>p.id===friendsPost.data.id));
   assert.ok(!bobFriends.data.items.some(p=>p.id===privatePost.data.id));
+  const firstPage=await api("/api/community/feed?mode=friends","GET",undefined,a.cookie);
+  assert.equal(firstPage.status,200);
+  assert.equal(firstPage.data.next,null,"Small feed must not have another page");
   assert.equal((await api(`/api/community/items/${friendsPost.data.id}/comments`,"POST",{body:"allowed"},b.cookie)).status,201);
   assert.equal((await api(`/api/community/items/${friendsPost.data.id}/comments`,"GET",undefined,c.cookie)).data.items.length,0);
   assert.equal((await api("/api/social/messages","POST",{recipientId:a.id,body:"hello"},b.cookie)).status,201);
