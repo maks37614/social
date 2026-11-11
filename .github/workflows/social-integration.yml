@@ -1,0 +1,25 @@
+name: Social integration checks
+on:
+  push:
+    branches: [integration/community-social]
+  pull_request:
+    paths:
+      - "src/**"
+      - "server/social/**"
+      - "package.json"
+      - "vite.config.ts"
+      - ".github/workflows/social-integration.yml"
+jobs:
+  typescript-and-build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      # Temporary until the integration branch has a regenerated committed lockfile.
+      - run: npm install --no-audit --no-fund
+      - run: npm run lint
+      - run: npm run build
