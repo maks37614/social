@@ -21,3 +21,13 @@ Optional linking requires a separately designed, consent-based verification flow
 ## Current progress
 
 Dedicated DB factory and example configuration are committed. **Backend bootstrapping, isolated authentication, migrations, frontend wiring and end-to-end tests are still pending.** No VPS or database has been modified.
+
+## Implementation update (2026-11-11)
+
+- `server/social/index.ts` implements a separate **prototype** API with registration, SMTP email confirmation, Argon2id passwords, hashed session tokens, logout, public posts and reactions.
+- `server/social/schema.sql` defines a separate Social schema.
+- Social Community home now displays a live API-backed feed and an independent login/registration gate.
+- Vite development proxy routes `/api` to the local Social API at port 3100.
+- Start only with a fresh, dedicated DB and explicitly set `SOCIAL_RUN_MIGRATIONS=1` for the first migration run. The service listens on localhost only.
+- **Not production-ready**: password reset, MFA, friends, comments, messages, notifications, profile settings, privacy/audience enforcement beyond public/private, moderation, durable rate limiting, database migration versioning, and full UI data mapping remain unfinished. Imported h00k modules are reference code, not wired into the Social server.
+- No CI/build/staging smoke test has been run, and the package lockfile must be regenerated in a controlled development environment.
