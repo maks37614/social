@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 
-type Profile = { userId:string; displayName:string; bio:string|null; publicEnabled:boolean; isSelf:boolean };
+type Profile = { userId:string; displayName:string; bio:string|null; publicEnabled:boolean; bioAudience?:"private"|"friends"|"public"; isSelf:boolean };
 async function call<T>(path:string, method="GET", body?:object):Promise<T> {
   const r=await fetch("/api/social/"+path,{method,credentials:"same-origin",cache:"no-store",
     headers:body?{"Content-Type":"application/json"}:undefined,body:body?JSON.stringify(body):undefined});
@@ -15,7 +15,7 @@ export function SocialProfileSettings({userId}:{userId:string}) {
   const [message,setMessage]=useState("");
   const [busy,setBusy]=useState(false);
   useEffect(()=>{let cancelled=false;void call<Profile>("profiles/"+encodeURIComponent(userId)).then(p=>{
-    if(cancelled)return;setBio(p.bio??"");setPublicEnabled(p.publicEnabled);
+    if(cancelled)return;setBio(p.bio??"");setPublicEnabled(p.publicEnabled);setAudience(p.bioAudience??"private");
   }).catch(e=>{if(!cancelled)setMessage(e.message);});return()=>{cancelled=true};},[userId]);
   const save=async(e:FormEvent)=>{e.preventDefault();setBusy(true);setMessage("");
     try{await call("profile","PUT",{bio,bioAudience:audience,publicEnabled});setMessage("Профіль збережено");}
