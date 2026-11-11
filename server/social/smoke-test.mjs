@@ -51,6 +51,9 @@ async function main(){
   assert.equal(publicPost.status,201);
   const invalidCursor=await api("/api/community/feed?before=not-a-cursor","GET",undefined,a.cookie);
   assert.equal(invalidCursor.status,400);
+  assert.equal((await api("/api/community/feed?before=2026-99-99T99:99:99.999Z%7C"+a.id,"GET",undefined,a.cookie)).status,400);
+  assert.equal((await api("/api/social/users/search?q=CI","GET",undefined,c.cookie)).data.items.length,0,
+    "Directory must exclude users who did not opt in");
   const bobFeed=await api("/api/community/feed?mode=friends","GET",undefined,b.cookie);
   assert.equal(bobFeed.status,200);
   assert.ok(!bobFeed.data.items.some(p=>p.id===friendsPost.data.id));
@@ -72,6 +75,9 @@ async function main(){
   assert.equal(conversation.data.items.length,1);
   assert.equal((await api(`/api/social/messages/${b.id}`,"GET",undefined,c.cookie)).status,403);
   assert.equal((await api("/api/social/profile","PUT",{bio:"secret",bioAudience:"friends",publicEnabled:true},a.cookie)).status,200);
+  const directory=await api("/api/social/users/search?q=CI%20Alice","GET",undefined,c.cookie);
+  assert.equal(directory.status,200);
+  assert.ok(directory.data.items.some(u=>u.id===a.id),"Opted-in user must be discoverable");
   assert.equal((await api(`/api/social/profiles/${a.id}`,"GET",undefined,b.cookie)).data.bio,"secret");
   assert.equal((await api(`/api/social/profiles/${a.id}`,"GET",undefined,c.cookie)).data.bio,null);
   console.log("PASS: login, CSRF origin, audiences, friendship, comments, messages, profiles");
