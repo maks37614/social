@@ -164,10 +164,24 @@ app.get("/api/social/me", wrap(async (req, res) => {
 app.get("/api/community/feed", wrap(async (req, res) => {
   const user = await authenticated(req, res);
   if (!user) return;
+  const mode = req.query.mode === "friends" ? "friends" : "public";
   const { rows } = await pool.query(
-    "SELECT p.id,p.body,p.created_at,p.author_id,u.display_name FROM social_posts p JOIN social_users u ON u.id=p.author_id WHERE p.audience='public' ORDER BY p.created_at DESC,p.id DESC LIMIT 40"
+    `SELECT p.id,p.body,p.created_at,p.author_id,p.audience,u.display_name
+     FROM social_posts p JOIN social_users u ON u.id=p.author_id
+     WHERE (p.author_id=$1 OR
+       (p.audience='public' AND $2='public') OR
+       (p.audience IN ('public','friends') AND $2='friends' AND EXISTS (
+         SELECT 1 FROM social_friend_requests f WHERE f.status='accepted'
+         AND ((f.sender_id=$1 AND f.recipient_id=p.author_id)
+         OR (f.recipient_id=$1 AND f.sender_id=p.author_id))
+       )))
+     ORDER BY p.created_at DESC,p.id DESC LIMIT 40`,
+    [user.id,mode]
   );
-  res.json({ success: true, items: rows.map(r => ({ id:r.id, kind:"post", body:{ text:r.body }, ownerId:r.author_id, authorName:r.display_name, createdAt:r.created_at, audience:"public" })), next: null });
+  res.json({ success:true, items:rows.map(r => ({
+    id:r.id,kind:"post",body:{text:r.body},ownerId:r.author_id,
+    authorName:r.display_name,createdAt:r.created_at,audience:r.audience
+  })),next:null });
 }));
 app.post("/api/community/items", limit, wrap(async (req, res) => {
   const user = await authenticated(req, res);
@@ -176,7 +190,7 @@ app.post("/api/community/items", limit, wrap(async (req, res) => {
   const text = typeof body?.text === "string" ? body.text.trim() : "";
   if (!text || text.length > 5000) return bad(res, "Post must contain 1–5000 characters");
   const audience = req.body?.audience ?? "public";
-  if (!["public", "private"].includes(audience)) return bad(res, "Unsupported audience");
+  if (!["public", "friends", "private"].includes(audience)) return bad(res, "Unsupported audience");
   const { rows } = await pool.query("INSERT INTO social_posts(author_id,body,audience) VALUES($1,$2,$3) RETURNING id", [user.id, text, audience]);
   res.status(201).json({ success:true, id:rows[0].id });
 }));
@@ -187,7 +201,7 @@ app.post("/api/community/items/:id/reaction", limit, wrap(async (req, res) => {
   const emoji = req.body?.emoji;
   if (!["👍","❤️","🔥","🤔","👏"].includes(emoji)) return bad(res, "Invalid reaction");
   const result = await pool.query(
-    "INSERT INTO social_reactions(post_id,user_id,emoji) SELECT id,$2,$3 FROM social_posts WHERE id=$1 AND (audience='public' OR author_id=$2) ON CONFLICT(post_id,user_id) DO UPDATE SET emoji=EXCLUDED.emoji RETURNING post_id",
+    "INSERT INTO social_reactions(post_id,user_id,emoji) SELECT id,$2,$3 FROM social_posts WHERE id=$1 AND (audience='public' OR author_id=$2 OR (audience='friends' AND EXISTS (SELECT 1 FROM social_friend_requests f WHERE f.status='accepted' AND ((f.sender_id=$2 AND f.recipient_id=social_posts.author_id) OR (f.recipient_id=$2 AND f.sender_id=social_posts.author_id))))) ON CONFLICT(post_id,user_id) DO UPDATE SET emoji=EXCLUDED.emoji RETURNING post_id",
     [req.params.id,user.id,emoji]
   );
   if (!result.rowCount) return bad(res, "Post not found", 404);
