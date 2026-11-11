@@ -105,6 +105,39 @@ app.get("/api/social/verify", wrap(async (req, res) => {
   } catch (e) { await client.query("ROLLBACK"); throw e; }
   finally { client.release(); }
 }));
+app.post("/api/social/password-reset/request", limit, wrap(async (req,res) => {
+  const email = req.body?.email;
+  if (typeof email !== "string" || email.length > 254) return bad(res,"Invalid email");
+  const { rows } = await pool.query<{id:string}>("SELECT id FROM social_users WHERE email=$1 AND email_verified=true",[email.toLowerCase()]);
+  if (rows[0]) {
+    const token = randomBytes(32).toString("hex");
+    await pool.query("DELETE FROM social_password_reset_tokens WHERE user_id=$1",[rows[0].id]);
+    await pool.query("INSERT INTO social_password_reset_tokens(token_hash,user_id,expires_at) VALUES($1,$2,now()+interval '30 minutes')",[hash(token),rows[0].id]);
+    await mailer.sendMail({from:mailFrom,to:email.toLowerCase(),subject:"Відновлення пароля Social",
+      text:`Якщо ви запитували відновлення, відкрийте ${origin}/?resetToken=${token}. Посилання діє 30 хвилин.`});
+  }
+  res.json({success:true,message:"Якщо акаунт існує, лист надіслано."});
+}));
+app.post("/api/social/password-reset/confirm", limit, wrap(async (req,res) => {
+  const token = req.body?.token, password = req.body?.password;
+  if (typeof token !== "string" || !/^[a-f0-9]{64}$/.test(token) ||
+      typeof password !== "string" || password.length < 15 || password.length > 256)
+    return bad(res,"Invalid reset data");
+  const encoded = await argon2.hash(password,{type:argon2.argon2id});
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const {rows} = await client.query<{user_id:string}>(
+      "DELETE FROM social_password_reset_tokens WHERE token_hash=$1 AND expires_at>now() RETURNING user_id",[hash(token)]);
+    if (!rows[0]) {await client.query("ROLLBACK");return bad(res,"Expired or invalid reset token",400);}
+    await client.query("UPDATE social_users SET password_hash=$2 WHERE id=$1",[rows[0].user_id,encoded]);
+    await client.query("DELETE FROM social_sessions WHERE user_id=$1",[rows[0].user_id]);
+    await client.query("DELETE FROM social_password_reset_tokens WHERE user_id=$1",[rows[0].user_id]);
+    await client.query("COMMIT");
+    res.json({success:true});
+  } catch(e) {await client.query("ROLLBACK");throw e;}
+  finally {client.release();}
+}));
 app.post("/api/social/login", limit, wrap(async (req, res) => {
   const { email, password } = req.body ?? {};
   if (typeof email !== "string" || typeof password !== "string") return bad(res, "Invalid credentials", 401);
