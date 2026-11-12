@@ -167,6 +167,17 @@ export const Header: React.FC<HeaderProps> = ({
               <Server className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">VPS</span>
             </button>
+            {/* Source branch link: Git branches are not deployed application routes. */}
+            <a
+              href="https://github.com/maks37614/social/tree/integration/community-social"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl border border-[#00e5bf]/40 text-[#00e5bf] text-[11px] sm:text-xs font-semibold hover:bg-[#00e5bf]/10 transition shrink-0"
+              title="Відкрити код інтеграції Community Social на GitHub"
+            >
+              <Users className="w-3.5 h-3.5" />
+              <span>Community Social ↗</span>
+            </a>
           </nav>
         </div>
 
