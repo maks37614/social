@@ -66,7 +66,7 @@ export const Header: React.FC<HeaderProps> = ({
               }`}
             >
               <Users className="w-3.5 h-3.5" />
-              <span>Community</span>
+              <span>Social · Community</span>
             </button>
 
             {/* 2. Стрічка трейдерів (Social Wall & Trades) */}

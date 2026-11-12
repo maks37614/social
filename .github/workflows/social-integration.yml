@@ -1,0 +1,53 @@
+name: Social integration checks
+on:
+  push:
+    branches: [integration/community-social]
+  pull_request:
+    paths:
+      - "src/**"
+      - "server/social/**"
+      - "package.json"
+      - "vite.config.ts"
+      - ".github/workflows/social-integration.yml"
+jobs:
+  typescript-build-and-schema:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: social_ci
+          POSTGRES_PASSWORD: social_ci_only
+          POSTGRES_DB: social_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U social_ci -d social_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      SOCIAL_DATABASE_URL: postgresql://social_ci:social_ci_only@127.0.0.1:5432/social_ci
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGUSER: social_ci
+      PGPASSWORD: social_ci_only
+      PGDATABASE: social_ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install --no-audit --no-fund
+      - run: npm run lint
+      - run: npm run build
+      - name: Apply Social schema to disposable PostgreSQL
+        run: psql -v ON_ERROR_STOP=1 -f server/social/schema.sql
+      - name: Verify Social schema and isolation tables
+        run: |
+          psql -v ON_ERROR_STOP=1 -Atc "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('social_users','social_sessions','social_posts','social_reactions','social_comments','social_verification_tokens','social_profiles','social_friend_requests','social_messages','social_password_reset_tokens')" | grep -qx '10'
+          psql -v ON_ERROR_STOP=1 -Atc "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name LIKE 'hc_%'" | grep -qx '0'
+      - name: Social API integration smoke tests
+        run: node server/social/smoke-test.mjs

@@ -1,4 +1,7 @@
 import React, { useState } from 'react';
+import { LiveCommunityFeed } from './integrations/community/LiveCommunityFeed';
+import { SocialIdentityGate } from './integrations/community/SocialIdentityGate';
+import { SocialConnections } from './integrations/community/SocialConnections';
 import { Header, MainNavSection } from './components/Header';
 import { LeftTraderSidebar, TradingSession } from './components/LeftTraderSidebar';
 import { CentralCommunityFeed } from './components/CentralCommunityFeed';
@@ -358,6 +361,9 @@ export default function App() {
         {/* PAGE 1: COMMUNITY HUB (Exact layout matching concept screenshot)          */}
         {/* ========================================================================= */}
         {activeSection === 'community' && (
+          <SocialIdentityGate><LiveCommunityFeed /></SocialIdentityGate>
+        )}
+        {false && activeSection === 'community' && (
           <div className="space-y-3">
             {/* Mobile Spatial Segmented Controller (< 768px) */}
             <div className="md:hidden bg-[#0c1322] border border-[#1b273d] p-1.5 rounded-2xl shadow-lg">
@@ -615,6 +621,9 @@ export default function App() {
         {/* PAGE 3: ПОВІДОМЛЕННЯ ТА ЧАТИ (Direct messages, public rooms, signals)     */}
         {/* ========================================================================= */}
         {activeSection === 'messages' && (
+          <SocialIdentityGate><SocialConnections /></SocialIdentityGate>
+        )}
+        {false && activeSection === 'messages' && (
           <div className="space-y-4 max-w-6xl mx-auto">
             <div className="bg-[#0e1625] border border-[#1a263d] rounded-2xl p-4 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
